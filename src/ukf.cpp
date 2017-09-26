@@ -11,6 +11,27 @@ using std::vector;
  * Initializes Unscented Kalman filter
  */
 UKF::UKF() {
+
+  // Process noise standard deviation longitudinal acceleration in m/s^2
+  std_a_ = 1.4;
+
+  // Process noise standard deviation yaw acceleration in rad/s^2
+  std_yawdd_ = 0.4;
+
+  // Laser measurement noise standard deviation position1 in m
+  std_laspx_ = 0.15;
+
+  // Laser measurement noise standard deviation position2 in m
+  std_laspy_ = 0.15;
+
+  // Radar measurement noise standard deviation radius in m
+  std_radr_ = 0.3;
+
+  // Radar measurement noise standard deviation angle in rad
+  std_radphi_ = 0.03;
+
+  // Radar measurement noise standard deviation radius change in m/s
+  std_radrd_ = 0.3;
   
   // if this is false, laser measurements will be ignored (except during init)
   use_laser_ = true;
@@ -37,34 +58,13 @@ UKF::UKF() {
         0,0,1,0,0,
         0,0,0,1,0,
         0,0,0,0,1;
-
-  // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 1.4;
-
-  // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.4;
-
-  // Laser measurement noise standard deviation position1 in m
-  std_laspx_ = 0.15;
-
-  // Laser measurement noise standard deviation position2 in m
-  std_laspy_ = 0.15;
-
-  // Radar measurement noise standard deviation radius in m
-  std_radr_ = 0.3;
-
-  // Radar measurement noise standard deviation angle in rad
-  std_radphi_ = 0.03;
-
-  // Radar measurement noise standard deviation radius change in m/s
-  std_radrd_ = 0.3;
   
   Xsig_pred = MatrixXd(n_x, 2 * n_aug + 1);
 
   //set weights
   weights = VectorXd(2*n_aug+1);
   
-  double lambda = 3 - n_x;
+  double lambda = 3 - n_aug;
   
   double weight_0 = lambda/(lambda+n_aug);
   weights(0) = weight_0;
@@ -98,7 +98,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       x_(3) = 0;
       x_(4) = 0;
     }
-    else if (meas_package.sensor_type_ == MeasurementPackage::RADAR){
+    else{
         double rho = meas_package.raw_measurements_(0);
         double phi = meas_package.raw_measurements_(1);
         double rhodot = meas_package.raw_measurements_(2);
@@ -107,7 +107,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
         
         x_(0) = rho*cos(phi);
         x_(1) = rho*sin(phi);
-        x_(2) = sqrt(vx_ * vx_ + vy_ * vy_);
+        x_(2) = rhodot; //sqrt(vx_ * vx_ + vy_ * vy_);
         x_(3) = 0;
         x_(4) = 0;
     }
@@ -163,6 +163,9 @@ void UKF::Prediction(double delta_t) {
   MatrixXd L = P_aug.llt().matrixL();
   //create augmented sigma points
   Xsig_aug.col(0)  = x_aug;
+  
+  lambda = 3-n_aug;
+  
   for (int i = 0; i< n_aug; i++)
   {
     Xsig_aug.col(i+1)       = x_aug + sqrt(lambda+n_aug) * L.col(i);
